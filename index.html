@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Schengen90 Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #faf6ef;
+  --surface:      #f3ede2;
+  --card:         #ede4d5;
+  --card-hover:   #e5d9c8;
+  --border:       #cfc0a8;
+  --border-light: #b8a890;
+  --accent:       #c85a22;
+  --accent-lt:    #e07840;
+  --accent-glow:  rgba(200, 90, 34, 0.14);
+  --safe:         #376828;
+  --safe-bg:      rgba(55, 104, 40, 0.08);
+  --warn:         #8a6810;
+  --warn-bg:      rgba(138, 104, 16, 0.08);
+  --danger:       #8a2020;
+  --danger-bg:    rgba(138, 32, 32, 0.08);
+  --text:         #221408;
+  --text-2:       #6a5040;
+  --text-3:       #a08870;
+  --in-day:       #c85a22;
+  --out-day:      #e8ddd0;
+  --radius:       10px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', system-ui, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.3;
+}
+
+.app {
+  max-width: 540px;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* ── HEADER ── */
+.hd {
+  padding: 1.25rem 1.25rem 1rem;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.hd::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.hd-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.hd-title .num { color: var(--accent); }
+
+.hd-calc {
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.hd-sub {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+/* ── SECTIONS ── */
+.sec {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sec-lbl {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 0.75rem;
+}
+
+/* ── STATS LAYOUT ── */
+.stats-layout {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.stats-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+/* ── GAUGE ── */
+.gauge-inner {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.gauge-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gauge-track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 9;
+}
+
+.gauge-arc {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-dasharray: 263.89;
+  stroke-dashoffset: 263.89;
+  transition: stroke-dashoffset 1.1s cubic-bezier(0.4,0,0.2,1), stroke 0.6s ease;
+}
+
+.gauge-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text);
+  transition: color 0.5s;
+}
+
+.gauge-denom {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-3);
+  margin-top: 0.1rem;
+}
+
+.gauge-sublabel {
+  font-size: 0.6rem;
+  color: var(--text-2);
+  margin-top: 0.2rem;
+}
+
+/* ── STAT CARDS ── */
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.625rem 0.75rem;
+}
+
+.stat-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.stat-lbl {
+  font-size: 0.65rem;
+  color: var(--text-2);
+  margin-top: 0.25rem;
+}
+
+/* ── STATUS BANNER ── */
+.banner {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.banner.safe    { border-color: var(--safe);   background: var(--safe-bg); }
+.banner.warn    { border-color: var(--warn);   background: var(--warn-bg); }
+.banner.danger  { border-color: var(--danger); background: var(--danger-bg); }
+.banner.neutral { border-color: var(--border-light); }
+
+.banner-icon { font-size: 1.2rem; flex-shrink: 0; line-height: 1; }
+
+.banner-pre {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-2);
+  margin-bottom: 0.1rem;
+}
+
+.banner-main {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.banner-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--text-2);
+  margin-top: 0.2rem;
+}
+
+/* ── TIMELINE ── */
+.tl-outer {
+  padding-bottom: 4px;
+}
+
+.tl-strip {
+  display: grid;
+  grid-template-columns: repeat(180, 1fr);
+  gap: 0;
+  padding: 6px 0;
+  user-select: none;
+  width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tl-day {
+  height: 22px;
+  cursor: default;
+}
+
+.tl-day.in  { background: var(--in-day); }
+.tl-day.out { background: var(--out-day); }
+.tl-day.now { background: var(--text); opacity: 0.6; }
+.tl-day.mo  { border-left: 1px solid rgba(0,0,0,0.1); }
+
+.tl-months {
+  display: flex;
+  margin-top: 3px;
+}
+
+.tl-mlbl {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.55rem;
+  color: var(--text-3);
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tl-legend {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--text-2);
+}
+
+.leg-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+/* ── TRIP LOG ── */
+.trips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.875rem;
+}
+
+.trip-empty {
+  text-align: center;
+  padding: 1.25rem;
+  color: var(--text-2);
+  font-size: 0.85rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.trip-row {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  transition: background 0.15s;
+}
+
+.trip-row:hover { background: var(--card-hover); }
+
+.trip-info { flex: 1; min-width: 0; }
+
+.trip-range {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trip-dur {
+  font-size: 0.68rem;
+  color: var(--text-2);
+  margin-top: 0.05rem;
+}
+
+.trip-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  background: var(--border-light);
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.trip-tag.live {
+  background: var(--safe-bg);
+  color: var(--safe);
+  border: 1px solid rgba(55,104,40,0.2);
+  animation: livepulse 2.2s ease-in-out infinite;
+}
+
+@keyframes livepulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+.trip-del {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.2rem 0.1rem;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.trip-del:hover { color: var(--danger); }
+
+/* ── ADD TRIP ── */
+.add-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: center;
+}
+
+.add-btn:hover { border-color: var(--accent); border-style: solid; background: var(--accent-glow); }
+
+.form-box {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-top: 0.75rem;
+}
+
+.form-box.open { display: block; }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.form-grp { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.form-lbl {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.form-inp {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.form-inp:focus { outline: none; border-color: var(--accent); }
+.form-inp:disabled { opacity: 0.35; cursor: not-allowed; }
+.form-inp::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+
+.still-lbl {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  margin-bottom: 0.875rem;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--text-2);
+}
+
+.still-lbl input { accent-color: var(--accent); width: 1rem; height: 1rem; cursor: pointer; }
+
+.form-err {
+  display: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--danger);
+  margin-bottom: 0.6rem;
+}
+
+.form-err.show { display: block; }
+
+.form-btns { display: flex; gap: 0.5rem; }
+
+.btn-go {
+  flex: 1;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 0.65rem 1rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-go:hover { opacity: 0.88; }
+
+.btn-cxl {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0.65rem 1rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.btn-cxl:hover { color: var(--text); }
+
+/* ── EXPLAINER ── */
+.explainer {
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--text-2);
+}
+
+.explainer h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 1rem 0 0.35rem;
+}
+
+.explainer h3:first-child { margin-top: 0; }
+.explainer p { margin-bottom: 0.5rem; }
+.explainer strong { color: var(--text); font-weight: 600; }
+
+/* ── DETAILS / SUMMARY ── */
+.sec--details { padding: 0; }
+
+.info-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  gap: 0.5rem;
+}
+
+.info-summary::-webkit-details-marker { display: none; }
+.info-summary::marker { display: none; }
+
+.info-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+details[open] .info-chevron { transform: rotate(180deg); }
+
+.info-details .explainer {
+  padding: 0 1.25rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.country-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+
+.ctag {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.18rem 0.45rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--text-2);
+}
+
+/* ── FOOTER ── */
+.ft {
+  padding: 0.875rem 1.25rem;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--text-3);
+}
+
+.ft-link {
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.ft-link:hover { text-decoration: underline; }
+
+/* ── TOOLTIP ── */
+.tip {
+  position: fixed;
+  background: var(--card);
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  padding: 0.3rem 0.6rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 200;
+  white-space: nowrap;
+  display: none;
+}
+
+/* ── UTILS ── */
+.c-accent  { color: var(--accent); }
+.c-safe    { color: var(--safe); }
+.c-warn    { color: var(--warn); }
+.c-danger  { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="hd">
+    <h1 class="hd-title">Schengen<span class="num">90</span> <span class="hd-calc">Calculator</span></h1>
+    <p class="hd-sub">90 days in any 180-day window</p>
+  </header>
+
+  <main>
+
+    <!-- STATS + DEADLINE -->
+    <section class="sec" id="s-stats">
+      <div class="sec-lbl">Your status today</div>
+      <div class="stats-layout">
+        <div class="gauge-inner">
+          <svg class="gauge-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="gauge-track" cx="50" cy="50" r="42"/>
+            <circle class="gauge-arc" id="gauge-arc" cx="50" cy="50" r="42"/>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-num" id="gauge-num">0</div>
+            <div class="gauge-denom">/ 90</div>
+            <div class="gauge-sublabel">days used</div>
+          </div>
+        </div>
+        <div class="stats-right">
+          <div class="stat-row" id="stat-row"></div>
+          <div id="banner"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TIMELINE -->
+    <section class="sec" id="s-timeline">
+      <div class="sec-lbl">Rolling 180-day window</div>
+      <div class="tl-outer" id="tl-outer">
+        <div class="tl-strip" id="tl-strip"></div>
+        <div class="tl-months" id="tl-months"></div>
+      </div>
+      <div class="tl-legend">
+        <div class="leg-item"><div class="leg-swatch" style="background:var(--in-day)"></div>In Schengen</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:var(--out-day);border:1px solid var(--border)"></div>Outside</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:var(--text);width:4px"></div>Today</div>
+      </div>
+    </section>
+
+    <!-- TRIPS -->
+    <section class="sec" id="s-trips">
+      <div class="sec-lbl">Your trips</div>
+      <div class="trips-list" id="trips-list"></div>
+      <button class="add-btn" id="add-btn" onclick="toggleForm()">+ Add a trip</button>
+      <div class="form-box" id="form-box">
+        <div class="form-row">
+          <div class="form-grp">
+            <label class="form-lbl" for="f-entry">Entry date</label>
+            <input class="form-inp" type="date" id="f-entry">
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl" for="f-exit">Exit date</label>
+            <input class="form-inp" type="date" id="f-exit">
+          </div>
+        </div>
+        <label class="still-lbl">
+          <input type="checkbox" id="f-still" onchange="onStillChange()">
+          I'm still here &mdash; no exit date yet
+        </label>
+        <div class="form-err" id="f-err"></div>
+        <div class="form-btns">
+          <button class="btn-go" onclick="submitTrip()">Add trip</button>
+          <button class="btn-cxl" onclick="toggleForm(false)">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPLAINER -->
+    <section class="sec sec--details" id="s-info">
+      <details class="info-details">
+        <summary class="info-summary">
+          <span class="sec-lbl" style="margin-bottom:0">How it works</span>
+          <svg class="info-chevron" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="explainer">
+          <h3>The 90/180 day rule</h3>
+          <p>Since Brexit, UK citizens are <strong>third-country nationals</strong> in the Schengen Area. You can visit for up to <strong>90 days in any 180-day period</strong>. But there's no fixed reset date — the window is <strong>rolling</strong>.</p>
+
+          <h3>What "rolling" actually means</h3>
+          <p>Every single day, the rule looks back exactly 180 days from today. It counts how many of those days you were inside Schengen. That number must never exceed 90. Old days only drop out of the window after 180 days have passed.</p>
+          <p>This means using 80 days in one block then leaving doesn't give you a fresh 90 — you need to wait for those days to age out of the 180-day lookback.</p>
+
+          <h3>How days are counted</h3>
+          <p>Both your <strong>entry day and exit day count</strong> as days in Schengen. Enter on Monday, leave on Wednesday? That's 3 days used — not 2.</p>
+
+          <h3>Schengen ≠ EU</h3>
+          <p>Some EU countries aren't in Schengen (Ireland, Romania, Bulgaria, Cyprus). Some non-EU countries are (Norway, Switzerland, Iceland, Liechtenstein). Time spent outside Schengen — including those countries — doesn't count towards your 90 days.</p>
+
+          <div class="country-grid">
+            <span class="ctag">Austria</span><span class="ctag">Belgium</span><span class="ctag">Croatia</span>
+            <span class="ctag">Czechia</span><span class="ctag">Denmark</span><span class="ctag">Estonia</span>
+            <span class="ctag">Finland</span><span class="ctag">France</span><span class="ctag">Germany</span>
+            <span class="ctag">Greece</span><span class="ctag">Hungary</span><span class="ctag">Iceland</span>
+            <span class="ctag">Italy</span><span class="ctag">Latvia</span><span class="ctag">Liechtenstein</span>
+            <span class="ctag">Lithuania</span><span class="ctag">Luxembourg</span><span class="ctag">Malta</span>
+            <span class="ctag">Netherlands</span><span class="ctag">Norway</span><span class="ctag">Poland</span>
+            <span class="ctag">Portugal</span><span class="ctag">Slovakia</span><span class="ctag">Slovenia</span>
+            <span class="ctag">Spain</span><span class="ctag">Sweden</span><span class="ctag">Switzerland</span>
+          </div>
+
+          <h3>What happens if you overstay?</h3>
+          <p>Border agents can check your entry/exit stamps. Overstaying can lead to a fine, a ban from Schengen, or a flag on your record. It's not worth the risk.</p>
+
+          <h3>Disclaimer</h3>
+          <p>This tool is a guide, not legal advice. Always verify with official sources. Carry documentation of your travel dates. Rules can change — when in doubt, use the <strong>EU's official Schengen short-stay calculator</strong>.</p>
+        </div>
+      </details>
+    </section>
+
+  </main>
+
+  <footer class="ft">
+    Mike Hudson &nbsp;·&nbsp; <a href="https://VandogTraveller.com" target="_blank" rel="noopener" class="ft-link">VandogTraveller.com</a>
+  </footer>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+'use strict';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const STORE_KEY = 'schengen90-trips-v3';
+let trips = [];
+
+try {
+  trips = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+} catch(e) {
+  trips = [];
+}
+
+// ─── DATE UTILS ───────────────────────────────────────────────────────────────
+function todayMidnight() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function parseLocal(str) {
+  if (!str) return null;
+  const parts = str.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function toISO(d) {
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+function fmtFull(d) {
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function fmtShort(d) {
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function daysBetween(a, b) {
+  return Math.round((b - a) / 86400000);
+}
+
+// ─── CORE ALGORITHM ───────────────────────────────────────────────────────────
+
+// Is a given date within any trip's Schengen stay?
+// stillHere trips are open-ended into the future.
+function inSchengen(date, tripList) {
+  for (const t of tripList) {
+    const entry = parseLocal(t.entry);
+    if (!entry || date < entry) continue;
+    if (t.stillHere) return true;
+    const exit = parseLocal(t.exit);
+    if (exit && date <= exit) return true;
+  }
+  return false;
+}
+
+// Count days in Schengen within the 180-day window ending at `endDate`.
+function countWindow(endDate, tripList) {
+  const start = addDays(endDate, -179);
+  let n = 0;
+  const d = new Date(start);
+  while (d <= endDate) {
+    if (inSchengen(d, tripList)) n++;
+    d.setDate(d.getDate() + 1);
+  }
+  return n;
+}
+
+// Days used by a single trip (both entry and exit day count).
+function tripDays(t) {
+  if (!t.entry) return 0;
+  const entry = parseLocal(t.entry);
+  const exit  = t.stillHere ? todayMidnight() : parseLocal(t.exit);
+  if (!exit || exit < entry) return 0;
+  return daysBetween(entry, exit) + 1;
+}
+
+// If currently in Schengen (or trip with future exit date), find the last
+// valid day before exceeding 90. Returns null if not in Schengen.
+function mustLeaveBy(tripList) {
+  const today = todayMidnight();
+  if (!inSchengen(today, tripList)) return null;
+
+  // Iterate forward assuming continued stay (stillHere covers future dates)
+  let d = new Date(today);
+  for (let i = 0; i < 400; i++) {
+    const c = countWindow(d, tripList);
+    if (c > 90) {
+      return { exceeded: false, date: addDays(d, -1) };
+    }
+    d = addDays(d, 1);
+  }
+  return null;
+}
+
+// If currently outside, find earliest date they can re-enter.
+function canReEnter(tripList) {
+  const today = todayMidnight();
+  if (inSchengen(today, tripList)) return null;
+
+  let d = new Date(today);
+  for (let i = 0; i < 400; i++) {
+    if (countWindow(d, tripList) < 90) return d;
+    d = addDays(d, 1);
+  }
+  return null;
+}
+
+// How many consecutive days could they stay starting from `startDate`?
+function daysAvailableFrom(startDate, tripList) {
+  const hypo = { entry: toISO(startDate), stillHere: true };
+  const projected = [...tripList, hypo];
+  let d = new Date(startDate);
+  let n = 0;
+  for (let i = 0; i < 400; i++) {
+    if (countWindow(d, projected) > 90) break;
+    n++;
+    d = addDays(d, 1);
+  }
+  return n;
+}
+
+// ─── RENDERING ────────────────────────────────────────────────────────────────
+const CIRC = 2 * Math.PI * 42; // ≈ 263.89
+
+function render() {
+  const today   = todayMidnight();
+  const used    = countWindow(today, trips);
+  const remain  = Math.max(0, 90 - used);
+  const pct     = Math.min(used / 90, 1);
+
+  // Gauge
+  const arc = document.getElementById('gauge-arc');
+  arc.style.strokeDashoffset = CIRC * (1 - pct);
+  arc.style.stroke = used > 90 ? 'var(--danger)' : used >= 75 ? 'var(--danger)' : used >= 55 ? 'var(--warn)' : 'var(--accent)';
+
+  const numEl = document.getElementById('gauge-num');
+  numEl.textContent = used;
+  numEl.className = 'gauge-num' + (used > 90 ? ' c-danger' : used >= 75 ? ' c-danger' : used >= 55 ? ' c-warn' : '');
+
+  // Stat cards
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-val ${remain === 0 ? 'c-danger' : remain <= 14 ? 'c-warn' : ''}">${remain}</div>
+      <div class="stat-lbl">days remaining</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${180 - used > 0 ? 180 - used : 0}</div>
+      <div class="stat-lbl">days outside window</div>
+    </div>
+  `;
+
+  // Status banner
+  renderBanner(today, used);
+
+  // Timeline
+  renderTimeline(today);
+
+  // Trips
+  renderTrips();
+}
+
+function renderBanner(today, used) {
+  const el = document.getElementById('banner');
+
+  if (trips.length === 0) {
+    el.className = 'banner neutral';
+    el.innerHTML = `
+      <div class="banner-icon">🗺️</div>
+      <div>
+        <div class="banner-pre">No trips logged yet</div>
+        <div class="banner-main">Add your first trip below</div>
+        <div class="banner-sub">— to see your deadline</div>
+      </div>`;
+    return;
+  }
+
+  const currently = inSchengen(today, trips);
+
+  if (currently) {
+    if (used > 90) {
+      el.className = 'banner danger';
+      el.innerHTML = `
+        <div class="banner-icon">🚨</div>
+        <div>
+          <div class="banner-pre">90-day limit exceeded</div>
+          <div class="banner-main c-danger">Leave immediately</div>
+          <div class="banner-sub">${used - 90} day${used - 90 !== 1 ? 's' : ''} over the limit</div>
+        </div>`;
+      return;
+    }
+
+    const ml = mustLeaveBy(trips);
+    if (ml && ml.date) {
+      const dLeft = daysBetween(today, ml.date);
+      const urgency = dLeft <= 7 ? 'danger' : dLeft <= 21 ? 'warn' : 'safe';
+      const icon    = dLeft <= 7 ? '⚠️' : dLeft <= 21 ? '⏳' : '✅';
+      const subline = dLeft === 0
+        ? 'Today is your last permitted day'
+        : `${dLeft} day${dLeft !== 1 ? 's' : ''} from now`;
+      el.className = `banner ${urgency}`;
+      el.innerHTML = `
+        <div class="banner-icon">${icon}</div>
+        <div>
+          <div class="banner-pre">Currently in Schengen · must leave by</div>
+          <div class="banner-main">${fmtFull(ml.date)}</div>
+          <div class="banner-sub">${subline}</div>
+        </div>`;
+    } else {
+      el.className = 'banner safe';
+      el.innerHTML = `
+        <div class="banner-icon">✅</div>
+        <div>
+          <div class="banner-pre">Currently in Schengen</div>
+          <div class="banner-main">No limit approaching</div>
+          <div class="banner-sub">More than a year of window available</div>
+        </div>`;
+    }
+  } else {
+    // Outside Schengen
+    if (used === 0) {
+      el.className = 'banner safe';
+      el.innerHTML = `
+        <div class="banner-icon">✅</div>
+        <div>
+          <div class="banner-pre">Currently outside Schengen</div>
+          <div class="banner-main">All 90 days available</div>
+          <div class="banner-sub">Enter any time</div>
+        </div>`;
+      return;
+    }
+
+    const re = canReEnter(trips);
+    if (!re) {
+      el.className = 'banner warn';
+      el.innerHTML = `
+        <div class="banner-icon">⏳</div>
+        <div>
+          <div class="banner-pre">Currently outside Schengen</div>
+          <div class="banner-main">Re-entry date unknown</div>
+          <div class="banner-sub">Check your trip dates are correct</div>
+        </div>`;
+      return;
+    }
+
+    const dUntil = daysBetween(today, re);
+    const avail  = daysAvailableFrom(re, trips);
+
+    if (dUntil === 0) {
+      el.className = 'banner safe';
+      el.innerHTML = `
+        <div class="banner-icon">✅</div>
+        <div>
+          <div class="banner-pre">Currently outside Schengen</div>
+          <div class="banner-main">Can re-enter today</div>
+          <div class="banner-sub">Up to ${avail} consecutive day${avail !== 1 ? 's' : ''} available</div>
+        </div>`;
+    } else {
+      el.className = 'banner warn';
+      el.innerHTML = `
+        <div class="banner-icon">⏳</div>
+        <div>
+          <div class="banner-pre">Earliest re-entry</div>
+          <div class="banner-main">${fmtFull(re)}</div>
+          <div class="banner-sub">${dUntil} day${dUntil !== 1 ? 's' : ''} away &nbsp;·&nbsp; then up to ${avail} day${avail !== 1 ? 's' : ''} available</div>
+        </div>`;
+    }
+  }
+}
+
+function renderTimeline(today) {
+  const strip  = document.getElementById('tl-strip');
+  const months = document.getElementById('tl-months');
+  const wStart = addDays(today, -179);
+
+  // Build day cells + collect month groups in one pass
+  let html = '';
+  const groups = [];
+  let grp = null;
+  let prevYear = null;
+
+  for (let i = 0; i < 180; i++) {
+    const d  = addDays(wStart, i);
+    const yr = d.getFullYear();
+    const mo = d.getMonth();
+    const key = `${yr}-${mo}`;
+
+    // Month group tracking
+    if (!grp || grp.key !== key) {
+      const showYear = (prevYear !== null && yr !== prevYear) || i === 0;
+      const lbl = d.toLocaleDateString('en-GB', { month: 'short' })
+                + (showYear ? ` '${String(yr).slice(2)}` : '');
+      grp = { key, label: lbl, count: 0 };
+      groups.push(grp);
+      prevYear = yr;
+    }
+    grp.count++;
+
+    // Day cell
+    const isToday    = i === 179;
+    const isMonthStart = d.getDate() === 1 && i > 0;
+    const moCls      = isMonthStart ? ' mo' : '';
+
+    if (isToday) {
+      html += `<div class="tl-day now${moCls}" title="Today: ${fmtFull(d)}"></div>`;
+    } else {
+      const isSch = inSchengen(d, trips);
+      html += `<div class="tl-day ${isSch ? 'in' : 'out'}${moCls}" data-d="${toISO(d)}" data-s="${isSch ? '1' : '0'}"></div>`;
+    }
+  }
+
+  strip.innerHTML = html;
+  months.innerHTML = groups.map(g =>
+    `<div class="tl-mlbl" style="flex:${g.count}">${g.label}</div>`
+  ).join('');
+
+  // Tooltips
+  strip.querySelectorAll('.tl-day[data-d]').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      const d   = parseLocal(el.dataset.d);
+      const lbl = el.dataset.s === '1' ? 'In Schengen' : 'Outside';
+      showTip(e, `${fmtFull(d)} · ${lbl}`);
+    });
+    el.addEventListener('mousemove', e => moveTip(e));
+    el.addEventListener('mouseleave', hideTip);
+  });
+}
+
+function renderTrips() {
+  const el = document.getElementById('trips-list');
+  if (trips.length === 0) {
+    el.innerHTML = `<div class="trip-empty">No trips yet.<br>Add your first entry below.</div>`;
+    return;
+  }
+
+  const sorted = [...trips].sort((a, b) => parseLocal(b.entry) - parseLocal(a.entry));
+
+  el.innerHTML = sorted.map(t => {
+    const entry  = parseLocal(t.entry);
+    const exitD  = t.stillHere ? todayMidnight() : parseLocal(t.exit);
+    const days   = tripDays(t);
+    const es     = entry ? fmtShort(entry) : '?';
+    const xs     = t.stillHere ? 'now' : (exitD ? fmtShort(exitD) : '?');
+    const tagCls = t.stillHere ? 'trip-tag live' : 'trip-tag';
+    const tagTxt = t.stillHere ? '● live' : `${days}d`;
+
+    return `
+      <div class="trip-row">
+        <div class="trip-info">
+          <div class="trip-range">${es} → ${xs}</div>
+          <div class="trip-dur">${days} day${days !== 1 ? 's' : ''} in Schengen</div>
+        </div>
+        <div class="${tagCls}">${tagTxt}</div>
+        <button class="trip-del" onclick="delTrip('${t.id}')" title="Remove trip">×</button>
+      </div>`;
+  }).join('');
+}
+
+// ─── TRIP CRUD ────────────────────────────────────────────────────────────────
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(trips));
+  render();
+}
+
+function delTrip(id) {
+  trips = trips.filter(t => t.id !== id);
+  save();
+}
+
+// ─── FORM ─────────────────────────────────────────────────────────────────────
+let formOpen = false;
+
+function toggleForm(force) {
+  formOpen = typeof force === 'boolean' ? force : !formOpen;
+  document.getElementById('form-box').classList.toggle('open', formOpen);
+  document.getElementById('add-btn').style.display = formOpen ? 'none' : '';
+
+  if (formOpen) {
+    document.getElementById('f-entry').value = toISO(todayMidnight());
+    document.getElementById('f-exit').value  = '';
+    document.getElementById('f-exit').disabled = false;
+    document.getElementById('f-still').checked = false;
+    hideErr();
+  }
+}
+
+function onStillChange() {
+  const checked = document.getElementById('f-still').checked;
+  const exitEl  = document.getElementById('f-exit');
+  exitEl.disabled = checked;
+  if (checked) exitEl.value = '';
+}
+
+function showErr(msg) {
+  const e = document.getElementById('f-err');
+  e.textContent = msg;
+  e.classList.add('show');
+}
+
+function hideErr() {
+  document.getElementById('f-err').classList.remove('show');
+}
+
+function submitTrip() {
+  hideErr();
+  const entryVal = document.getElementById('f-entry').value.trim();
+  const exitVal  = document.getElementById('f-exit').value.trim();
+  const still    = document.getElementById('f-still').checked;
+
+  if (!entryVal) { showErr('Please set an entry date.'); return; }
+  if (!still && !exitVal) { showErr('Set an exit date or tick "still here".'); return; }
+
+  const entryD = parseLocal(entryVal);
+  if (!entryD) { showErr('Invalid entry date.'); return; }
+
+  if (!still) {
+    const exitD = parseLocal(exitVal);
+    if (!exitD) { showErr('Invalid exit date.'); return; }
+    if (exitD < entryD) { showErr('Exit date must be on or after entry date.'); return; }
+  }
+
+  // If adding a stillHere trip, cap any existing open trips
+  if (still) {
+    trips = trips.map(t => {
+      if (t.stillHere) {
+        return { ...t, stillHere: false, exit: entryVal };
+      }
+      return t;
+    });
+  }
+
+  trips.push({ id: uid(), entry: entryVal, exit: still ? null : exitVal, stillHere: still });
+
+  toggleForm(false);
+  save();
+}
+
+// ─── TOOLTIP ──────────────────────────────────────────────────────────────────
+const tip = document.getElementById('tip');
+
+function showTip(e, txt) {
+  tip.textContent = txt;
+  tip.style.display = 'block';
+  moveTip(e);
+}
+
+function moveTip(e) {
+  tip.style.left = (e.clientX + 12) + 'px';
+  tip.style.top  = (e.clientY - 36) + 'px';
+}
+
+function hideTip() {
+  tip.style.display = 'none';
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+// Start gauge hidden, then animate in on next frame
+(function() {
+  const arc = document.getElementById('gauge-arc');
+  arc.style.strokeDashoffset = String(CIRC);
+  requestAnimationFrame(() => requestAnimationFrame(() => render()));
+})();
+</script>
+</body>
+</html>
