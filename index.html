@@ -1248,10 +1248,13 @@ function hideTip() {
 // ─── IFRAME RESIZE ────────────────────────────────────────────────────────────
 (function() {
   function sendHeight() {
-    const h = document.documentElement.scrollHeight;
-    window.parent.postMessage({ iframeHeight: h }, '*');
+    const app = document.querySelector('.app');
+    const h = app ? app.getBoundingClientRect().height : document.documentElement.scrollHeight;
+    window.parent.postMessage({ iframeHeight: Math.ceil(h) }, '*');
   }
-  new ResizeObserver(sendHeight).observe(document.body);
+  const app = document.querySelector('.app');
+  if (app) new ResizeObserver(sendHeight).observe(app);
+  document.querySelector('details')?.addEventListener('toggle', sendHeight);
   sendHeight();
 })();
 </script>
