@@ -1245,6 +1245,15 @@ function hideTip() {
   arc.style.strokeDashoffset = String(CIRC);
   requestAnimationFrame(() => requestAnimationFrame(() => render()));
 })();
+// ─── IFRAME RESIZE ────────────────────────────────────────────────────────────
+(function() {
+  function sendHeight() {
+    const h = document.documentElement.scrollHeight;
+    window.parent.postMessage({ iframeHeight: h }, '*');
+  }
+  new ResizeObserver(sendHeight).observe(document.body);
+  sendHeight();
+})();
 </script>
 </body>
 </html>
