@@ -184,12 +184,11 @@ body {
 
 /* ── STAT CARDS ── */
 .stat-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 0.5rem;
 }
-
 .stat-card {
+  flex: 1;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -687,7 +686,7 @@ details[open] .info-chevron { transform: rotate(180deg); }
         </label>
         <div class="form-err" id="f-err"></div>
         <div class="form-btns">
-          <button class="btn-go" onclick="submitTrip()">Add trip</button>
+          <button class="btn-go" id="f-submit" onclick="submitTrip()">Add trip</button>
           <button class="btn-cxl" onclick="toggleForm(false)">Cancel</button>
         </div>
       </div>
@@ -895,16 +894,22 @@ function render() {
   numEl.textContent = used;
   numEl.className = 'gauge-num' + (used > 90 ? ' c-danger' : used >= 75 ? ' c-danger' : used >= 55 ? ' c-warn' : '');
 
+  // "Stay until" date — only shown when inside Schengen
+  const leaveResult = mustLeaveBy(trips);
+  const stayUntilCard = leaveResult
+    ? `<div class="stat-card">
+        <div class="stat-val ${remain <= 14 ? 'c-warn' : ''}">${leaveResult.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
+        <div class="stat-lbl">stay until</div>
+      </div>`
+    : '';
+
   // Stat cards
   document.getElementById('stat-row').innerHTML = `
     <div class="stat-card">
       <div class="stat-val ${remain === 0 ? 'c-danger' : remain <= 14 ? 'c-warn' : ''}">${remain}</div>
       <div class="stat-lbl">days remaining</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-val">${180 - used > 0 ? 180 - used : 0}</div>
-      <div class="stat-lbl">days outside window</div>
-    </div>
+    ${stayUntilCard}
   `;
 
   // Status banner
@@ -1102,13 +1107,13 @@ function renderTrips() {
     const tagTxt = t.stillHere ? '● live' : `${days}d`;
 
     return `
-      <div class="trip-row">
+      <div class="trip-row" onclick="editTrip('${t.id}')" style="cursor:pointer">
         <div class="trip-info">
           <div class="trip-range">${es} → ${xs}</div>
           <div class="trip-dur">${days} day${days !== 1 ? 's' : ''} in Schengen</div>
         </div>
         <div class="${tagCls}">${tagTxt}</div>
-        <button class="trip-del" onclick="delTrip('${t.id}')" title="Remove trip">×</button>
+        <button class="trip-del" onclick="event.stopPropagation();delTrip('${t.id}')" title="Remove trip">×</button>
       </div>`;
   }).join('');
 }
@@ -1130,6 +1135,7 @@ function delTrip(id) {
 
 // ─── FORM ─────────────────────────────────────────────────────────────────────
 let formOpen = false;
+let editingId = null;
 
 function toggleForm(force) {
   formOpen = typeof force === 'boolean' ? force : !formOpen;
@@ -1141,8 +1147,26 @@ function toggleForm(force) {
     document.getElementById('f-exit').value  = '';
     document.getElementById('f-exit').disabled = false;
     document.getElementById('f-still').checked = false;
+    document.getElementById('f-submit').textContent = 'Add trip';
+    editingId = null;
     hideErr();
   }
+}
+
+function editTrip(id) {
+  const t = trips.find(t => t.id === id);
+  if (!t) return;
+  editingId = id;
+  formOpen = true;
+  document.getElementById('form-box').classList.add('open');
+  document.getElementById('add-btn').style.display = 'none';
+  document.getElementById('f-entry').value = t.entry;
+  document.getElementById('f-exit').value  = t.stillHere ? '' : (t.exit || '');
+  document.getElementById('f-exit').disabled = !!t.stillHere;
+  document.getElementById('f-still').checked = !!t.stillHere;
+  document.getElementById('f-submit').textContent = 'Save changes';
+  hideErr();
+  document.getElementById('form-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function onStillChange() {
@@ -1180,17 +1204,17 @@ function submitTrip() {
     if (exitD < entryD) { showErr('Exit date must be on or after entry date.'); return; }
   }
 
-  // If adding a stillHere trip, cap any existing open trips
-  if (still) {
-    trips = trips.map(t => {
-      if (t.stillHere) {
-        return { ...t, stillHere: false, exit: entryVal };
-      }
-      return t;
-    });
+  if (editingId) {
+    trips = trips.map(t => t.id === editingId
+      ? { ...t, entry: entryVal, exit: still ? null : exitVal, stillHere: still }
+      : t);
+  } else {
+    // If adding a stillHere trip, cap any existing open trips
+    if (still) {
+      trips = trips.map(t => t.stillHere ? { ...t, stillHere: false, exit: entryVal } : t);
+    }
+    trips.push({ id: uid(), entry: entryVal, exit: still ? null : exitVal, stillHere: still });
   }
-
-  trips.push({ id: uid(), entry: entryVal, exit: still ? null : exitVal, stillHere: still });
 
   toggleForm(false);
   save();
